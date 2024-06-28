@@ -2,15 +2,14 @@ from flask import Flask, render_template, request, jsonify
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import time
-import threading
 
 app = Flask(__name__)
-client = WebClient(token='xoxe.xoxp-1-Mi0yLTI4NzY4MzE1Mzc5MjItNjYyMjE2NTAxMDMzOC03MzQ2OTc3ODczMTg2LTczNDQ2MTMyMTU2MDYtNWVkN2FlMmRkMGI5MTRlN2JhNDcyYjMyZWI4NzA0MzdkM2JmMGI4MzlhOWQ3M2Q4M2IxNTNiYWJhOGZjZmE1Mw')
+client = WebClient(token='SlackToken')
+
 
 # Cache to store user list and channel memberships
 user_cache = None
 channel_cache = None
-channel_lock = threading.Lock()
 
 def get_users():
     global user_cache
@@ -39,14 +38,6 @@ def get_user_id(username):
             return user['id']
     return None
 
-def fetch_channel_members(channel):
-    try:
-        members_response = client.conversations_members(channel=channel['id'])
-        with channel_lock:
-            channel_cache[channel['name']] = set(members_response['members'])
-    except SlackApiError as e:
-        print(f"Error fetching members for channel {channel['name']}: {e.response['error']}")
-
 def get_all_channels():
     global channel_cache
     if channel_cache is not None:
@@ -55,22 +46,12 @@ def get_all_channels():
     try:
         response = client.conversations_list(types='public_channel,private_channel')
         channels = response['channels']
-        channel_cache = {}
-
-        threads = []
-        for channel in channels:
-            thread = threading.Thread(target=fetch_channel_members, args=(channel,))
-            thread.start()
-            threads.append(thread)
-            time.sleep(0.1)  # Slight delay to avoid rate limiting
-
-        for thread in threads:
-            thread.join()
-
-        return channel_cache
+        channel_list = [{'name': channel['name'], 'id': channel['id']} for channel in channels]
+        channel_cache = channel_list
+        return channel_list
     except SlackApiError as e:
         print(f"Error fetching channels: {e.response['error']}")
-        return {}
+        return []
 
 @app.route('/')
 def index():
@@ -80,6 +61,11 @@ def index():
 def users():
     users = get_users()
     return jsonify(users)
+
+@app.route('/channels', methods=['GET'])
+def channels():
+    channels = get_all_channels()
+    return jsonify(channels)
 
 @app.route('/mutual_channels', methods=['POST'])
 def mutual_channels():
@@ -93,11 +79,34 @@ def mutual_channels():
     mutual_channels = []
     if user_id_1 and user_id_2:
         all_channels = get_all_channels()
-        user1_channels = {channel for channel in all_channels if user_id_1 in all_channels[channel]}
-        user2_channels = {channel for channel in all_channels if user_id_2 in all_channels[channel]}
+        user1_channels = {channel['name'] for channel in all_channels if user_id_1 in client.conversations_members(channel=channel['id']).get('members', [])}
+        user2_channels = {channel['name'] for channel in all_channels if user_id_2 in client.conversations_members(channel=channel['id']).get('members', [])}
         mutual_channels = list(user1_channels.intersection(user2_channels))
     
-    return jsonify(list(mutual_channels))
+    return jsonify(mutual_channels)
+
+@app.route('/search', methods=['POST'])
+def search():
+    data = request.json
+    keyword = data['keyword']
+    results = []
+    all_channels = get_all_channels()
+
+    for channel in all_channels:
+        try:
+            messages = client.conversations_history(channel=channel['id']).get('messages', [])
+            for message in messages:
+                if keyword.lower() in message.get('text', '').lower():
+                    user_info = client.users_info(user=message['user'])
+                    results.append({
+                        'text': message['text'],
+                        'channel': channel['name'],
+                        'user': user_info['user']['name']
+                    })
+        except SlackApiError as e:
+            print(f"Error fetching messages for channel {channel['name']}: {e.response['error']}")
+    
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True)
