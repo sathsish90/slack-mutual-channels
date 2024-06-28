@@ -1,0 +1,13 @@
+Mutual 5 Code changelogs
+
+/your_project_directory
+|-- app.py
+|-- templates
+|   |-- index.html
+|-- static
+    |-- style.css
+    |-- script.js
+    |-- jquery-ui.css
+    |-- jquery-ui.js
+
+List out all the channels
