@@ -56,6 +56,7 @@ This code helps an employee in a Slack workspace to list all fellow colleagues, 
     pip install -r requirements.txt
     ```
 
+
 ### Step 3: Set Up & Run the Flask Application
 1. Ensure your virtual environment is activated.
 2. Run the Flask application:
@@ -63,6 +64,11 @@ This code helps an employee in a Slack workspace to list all fellow colleagues, 
     python app.py
     ```
 3. Open your browser and navigate to `http://127.0.0.1:5000/`.
+
+### Screenshots
+Mutual Channels in Slack: ![Screenshot 2024-06-29 050901](https://github.com/sathsish90/slack-mutual-channels/assets/31122297/cd108d13-ae15-4d77-ae0f-9cac702e6e6d)
+List of Users: ![Screenshot 2024-06-29 045342](https://github.com/sathsish90/slack-mutual-channels/assets/31122297/b19942bb-1643-4131-a117-6fd7185ce677)
+List of Channels: ![Screenshot 2024-06-29 045315](https://github.com/sathsish90/slack-mutual-channels/assets/31122297/6bd9dfa4-e488-448b-af42-22aaa48f9f3d)
 
 ### Notes
 - Ensure you replace `'your-slack-token-here'` with your actual Slack token.
